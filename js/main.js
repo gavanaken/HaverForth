@@ -13,6 +13,74 @@ words[">"] = greaterThan;
 words["="] = equal;
 words[".s"] = dotS;
 words["dup"] = dup;
+words["drop"] = drop;
+
+var shapes = {};
+shapes["rectangle"] = makeRect;
+shapes["triangle"] = makeTriangle;
+shapes["circle"] = makeCircle;
+
+var autoCenter = true;
+
+function makeRect(stack, ctx) {
+    if (autoCenter) {
+        var width = stack.pop();
+        var height = stack.pop();
+        var x = 150 - width/2;
+        var y = 150 - height/2;
+    }
+    else {
+        var width = stack.pop();
+        var height = stack.pop();
+        var y = stack.pop();
+        var x = stack.pop();
+    }
+    ctx.strokeRect(x, y, width, height); // lol
+
+}
+
+function makeTriangle(stack, ctx) {
+    if (autoCenter) {
+        var side1 = stack.pop();
+        var side2 = stack.pop();
+        var side3 = Math.sqrt(side1**2 + side2**2);
+        var startx = 150 - side1/2;
+        var starty = 150 - side2/2;
+    }
+    else {
+        var side1 = stack.pop();
+        var side2 = stack.pop();
+        var y = stack.pop();
+        var x = stack.pop();
+        var side3 = Math.sqrt(side1**2 + side2**2);
+        var startx = x - side1/2;
+        var starty = y - side2/2;
+    }
+    ctx.beginPath();
+    ctx.moveTo(startx, starty);
+    ctx.lineTo(startx, starty+side2);
+    ctx.lineTo(startx+side1, starty+side2);
+    ctx.lineTo(startx, starty);
+    ctx.stroke();
+        
+}
+
+function makeCircle(stack, ctx) {
+    if (autoCenter) {
+        var rad = stack.pop();
+        ctx.beginPath();
+        ctx.arc(150, 150, rad, 0, 2*Math.PI);
+        ctx.stroke();
+    }
+    else {
+        var rad = stack.pop();
+        var y = stack.pop();
+        var x = stack.pop();
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, 2*Math.PI);
+        ctx.stroke();
+    }
+}
 
 // Stack Class
 function Stack () {
@@ -68,11 +136,23 @@ function print(terminal, msg) {
  * @param {Array[Number]} The stack to render
  */
 function renderStack(stack) {
-    $("#thestack").empty();
-    stack.getElements().slice().reverse().forEach(function(element) {
-        $("#thestack").append("<tr><td>" + element + "</td></tr>");
+    if (stack.getElements().length === 0) {
+        $("#thestack").empty();
+        $("#thestack").append("<tr><td>" + 'empty' + "</td></tr>");
+    }
+    else {
+        $("#thestack").empty();
+        stack.getElements().slice().reverse().forEach(function(element) {
+            $("#thestack").append("<tr><td>" + element + "</td></tr>");
     });
+}
 };
+
+function renderDrawing(stack, shape) {
+    var canvas = document.getElementById('thecanvas');
+    var ctx = canvas.getContext('2d');
+    shapes[shape](stack, ctx);
+}
 
 function dotS(stack, terminal) {
     print(terminal, " <" + stack.getElements().length + "> " + stack.getElements().slice().join(" "));
@@ -180,6 +260,11 @@ function equal(stack, terminal) {
     return;
 }
 
+function drop(stack, terminal) {
+    var dropped = stack.pop();
+    return;
+}
+
 /** 
  * Process a user input, update the stack accordingly, write a
  * response out to some terminal.
@@ -194,7 +279,14 @@ function process(stack, input, terminal) {
     if (!(isNaN(Number(input)))) {
         print(terminal,"pushing " + Number(input));
         stack.push(Number(input));
-    } 
+    }
+    else if (input in shapes) {
+        renderDrawing(stack, input);
+    }
+    else if (input == "autocenter") {
+        autoCenter = !autoCenter;
+        print(terminal,"toggling autoCenter to " + String(autoCenter));
+    }
     else if (input in words) {
         if (words[input] instanceof Array) {
             var commands = words[input].slice();
@@ -244,13 +336,14 @@ function process(stack, input, terminal) {
             }
         }
         else {
+            print(terminal, input + "ing");
             words[input](stack, terminal);
         }
     }
     else {
         print(terminal, ":-( Unrecognized input: " + String(input));
     }
-    //renderStack(stack);
+    //renderStack(stack); no longer need to call it thanks to our ObservableStack class
 };
 
 function processif(stack, input, terminal) {
@@ -322,7 +415,13 @@ $(document).ready(function() {
 
     print(terminal, "Welcome to HaverForth! v0.1");
     print(terminal, "As you type, the stack (on the right) will be kept in sync");
-
+    
+    var clearCanvas = $("#clearCanvas");
+    clearCanvas.click(function clearCanvas() {
+        var canvas = document.getElementById('thecanvas');
+        var ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+    });
 
     //https://api.jquery.com/click/
     var resetButton = $("#reset");
@@ -331,7 +430,7 @@ $(document).ready(function() {
     while (stack.getElements().length != 0) {
         stack.pop();
     }
-    renderStack(stack);
+    renderStack(stack); //the only explicit call to renderStack, after this it will update itself
 });
 
     runRepl(terminal, stack);
