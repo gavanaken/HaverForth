@@ -363,6 +363,24 @@ function processif(stack, input, terminal) {
 
 function runRepl(terminal, stack) {
     terminal.input("Type a forth command:", function(line) {
+        if (line.search(":") != -1) {
+            if (line.search(";") == -1) {
+                print(terminal, "incorrect function declaration (did you forget a ;?)")
+                return runRepl(terminal, stack);
+            } 
+        }
+        if (line.search("if") != -1) {
+            if (line.search("else") == -1) {
+                print(terminal, "incorrect function declaration (did you forget an else or an end?)")
+                return runRepl(terminal, stack);
+            }
+        }
+        if (line.search("if") != -1) {
+            if (line.search("end") == -1) {
+                print(terminal, "incorrect function declaration (did you forget an else or an end?)")
+                return runRepl(terminal, stack);
+            }
+        }
         print(terminal, "User typed in: " + line);
         //https://stackoverflow.com/questions/1418050/string-strip-for-javascript
         var commands = line.trim().split(/ +/);
